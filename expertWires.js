@@ -37,12 +37,14 @@ var labelThese=[];
 //   overlay - a red/white transparency to show logic high or low
 //   hilite - to show the selected polygon
 //   hitbuffer - abusing color values to return which polygon is under a point
-// we no longer use a scaling transform - we now scale the chip data at 
+// we no longer use a scaling transform - we now scale the chip data at
 //   the point of drawing line segments
 // if the canvas is any smaller than chip coordinates there will be
 //   rounding artifacts, and at high zoom there will be anti-aliasing on edges.
 var grMaxZoom=12;
 var grChipSize=10000;
+var grChipOffsetX=400;
+var grChipOffsetY=0;
 var grCanvasSize=2000;
 var grLineWidth=1;
 
@@ -51,7 +53,7 @@ var layernames = ['metal', 'switched diffusion', 'inputdiode', 'grounded diffusi
 var colors = ['rgba(128,128,192,0.4)','#FFFF00','#FF00FF','#4DFF4D',
               '#FF4D4D','#801AC0','rgba(128,0,255,0.75)'];
 var drawlayers = [true, true, true, true, true, true];
-              
+
 // some modes and parameters which can be passed in from the URL query
 var moveHereFirst;
 var expertMode=true;
@@ -210,6 +212,24 @@ function setupParams(){
 			clockTriggers[value]=[clockTriggers[value],"setLow('rdy');"].join("");
 		} else if(name=="rdy1" && parseInt(value)!=NaN){
 			clockTriggers[value]=[clockTriggers[value],"setHigh('rdy');"].join("");
+		} else if(name=="so0" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setLow('so');"].join("");
+		} else if(name=="so1" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setHigh('so');"].join("");
+		// Some Z80 inputs - we can refactor if this becomes unwieldy
+		} else if(name=="int0" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setLow('int');"].join("");
+		} else if(name=="int1" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setHigh('int');"].join("");
+		} else if(name=="wait0" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setLow('wait');"].join("");
+		} else if(name=="wait1" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setHigh('wait');"].join("");
+		} else if(name=="busrq0" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setLow('busrq');"].join("");
+		} else if(name=="busrq1" && parseInt(value)!=NaN){
+			clockTriggers[value]=[clockTriggers[value],"setHigh('busrq');"].join("");
+		//
 		} else if(name=="time" && parseInt(value)!=NaN){
 			eventTime=value;
 		} else if(name=="databus" && parseInt(value)!=NaN){
@@ -257,13 +277,22 @@ function handleKey(e){
 	else if(c=='p') stepBack();
 }
 
+//  handler for zoom in/out using the mouse wheel
+function handleWheelZoom(e){
+	chipsurround.focus();
+	e.preventDefault();
+	var n = e.deltaY / 100;
+	if(n>0 && zoom>1) setZoom(zoom/1.2);
+	if(n<0 && zoom<grMaxZoom) setZoom(zoom*1.2);
+}
+
 //  handler for mousedown events over chip display
 //  must handle click-to-select (and focus), and drag to pan
 function mouseDown(e){
 	chipsurround.focus();
 	e.preventDefault();
-	moved=false;	
-	dragMouseX = e.clientX;	
+	moved=false;
+	dragMouseX = e.clientX;
 	dragMouseY = e.clientY;
 	chipsurround.onmousemove = function(e){mouseMove(e)};
 	chipsurround.onmouseup = function(e){mouseUp(e)};
@@ -286,7 +315,7 @@ function mouseMove(e){
 }
 
 function mouseUp(e){
-	if(!moved) handleClick(e);	
+	if(!moved) handleClick(e);
 	chipsurround.onmousemove = undefined;
 	chipsurround.onmouseup = undefined;
 }
@@ -330,8 +359,8 @@ function updateLinkHere(){
 //   boxLabel(['PD',   50, 8424, 3536, 9256, 2464])
 //   boxLabel(['IR',   50, 8432, 2332, 9124,  984])
 //   boxLabel(['PLA', 100, 1169, 2328, 8393,  934])
-//   boxLabel(['Y',    50, 2143, 8820, 2317, 5689])  
-//   boxLabel(['X',    50, 2317, 8820, 2490, 5689])  
+//   boxLabel(['Y',    50, 2143, 8820, 2317, 5689])
+//   boxLabel(['X',    50, 2317, 8820, 2490, 5689])
 //   boxLabel(['S',    50, 2490, 8820, 2814, 5689])
 //   boxLabel(['ALU',  50, 2814, 8820, 4525, 5689])
 //   boxLabel(['DAdj', 40, 4525, 8820, 5040, 5689])
@@ -457,7 +486,7 @@ function hiliteNodeList(){
 // the localx and localy functions return canvas coordinate offsets from the canvas window top left corner
 // we divide the results by 'zoom' to get drawn coordinates useful in findNodeNumber
 // to convert to reported user chip coordinates we multiply by grChipSize/600
-// to compare to segdefs and transdefs coordinates we subtract 400 from x and subtract y from grChipSize
+// to compare to segdefs and transdefs coordinates we subtract grChipOffsetX from x and subtract y from grChipSize plus grChipOffsetY
 
 function handleClick(e){
 	var x = localx(hilite, e.clientX)/zoom;
@@ -467,7 +496,7 @@ function handleClick(e){
 	var cx = Math.round(x*grChipSize/600);
 	var cy = Math.round(y*grChipSize/600);
 	// prepare two lines of status report
-	var s1='x: ' + cx + ' y: ' + cy;
+	var s1='x: ' + (cx - grChipOffsetX) + ' y: ' + (cy - grChipOffsetY);
 	var s2='node:&nbsp;' + w + '&nbsp;' + nodeName(w);
 	if(w==-1) {
 		setStatus(s1); // no node found, so report only coordinates
@@ -476,8 +505,8 @@ function handleClick(e){
 	// we have a node, but maybe we clicked over a transistor
 	var nodelist=[w];
 	// match the coordinate against transistor gate bounding boxes
-	x=cx-400;
-	y=grChipSize-cy;
+	x=cx-grChipOffsetX;
+	y=grChipSize+grChipOffsetY-cy;
 	for(var i=0;i<nodes[w].gates.length;i++){
 		var xmin=nodes[w].gates[i].bb[0], xmax=nodes[w].gates[i].bb[1];
 		var ymin=nodes[w].gates[i].bb[2], ymax=nodes[w].gates[i].bb[3];
@@ -579,8 +608,10 @@ function setupChipLayoutGraphics(){
 	}
 	// grant focus to the chip display to enable zoom keys
 	chipsurround.focus();
+	chipsurround.onwheel = function(e){handleWheelZoom(e);};
 	chipsurround.onmousedown = function(e){mouseDown(e);};
 	chipsurround.onkeypress = function(e){handleKey(e);};
+	chipsurround.onmouseout = function(e){mouseLeave(e);};
 }
 
 // utility function to save graphics pan and zoom

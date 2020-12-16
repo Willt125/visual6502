@@ -153,8 +153,8 @@ p2: 1553,       // I bit of status register (storage node)
 p3: 348,        // D bit of status register (storage node)
 p4: 1119,       // there is no bit4 in the status register! (not a storage node)
 p5: -1,         // there is no bit5 in the status register! (not a storage node)
-p6: 77,         // V bit of status register (storage node)
-p7: 1370,       // N bit of status register (storage node)
+p6: 1625,       // V bit of status register (storage node)
+p7: 69,         // N bit of status register (storage node)
 
                 // internal bus: status register outputs for push P
 Pout0: 687,
@@ -405,7 +405,7 @@ RnWstretched: 353, // internal signal: control datapad output drivers, aka TRIST
 "#DBE": 1035,      // internal signal: formerly from DBE pad (6501)
 "~DBE": 1035,       // automatic alias replacing hash with tilde
 cp1: 710,       // internal signal: clock phase 1
-cclk: 943,      // unbonded pad: internal non-overlappying phi2
+cclk: 943,      // unbonded pad: internal non-overlapping phi2
 fetch: 879,     // internal signal
 clearIR: 1077,  // internal signal
 H1x1: 1042,     // internal signal: drive status byte onto databus
@@ -590,8 +590,8 @@ H1x1: 1042,     // internal signal: drive status byte onto databus
 
 // internal signals: control signals
 nnT2BR: 967,    // doubly inverted
-BRtaken: 1544,  // aka #TAKEN
-BRtaken: 1544,   // automatic alias replacing hash with tilde
+"#BRtaken": 1544,  // aka #TAKEN
+"~BRtaken": 1544,   // automatic alias replacing hash with tilde
 
 // internal signals and state: interrupt and vector related
 // segher says:
@@ -863,7 +863,10 @@ AxB7: 1241,
 // internal signals: datapath control signals
 
 "ADL/ABL": 639,      // load ABL latches from ADL bus
+"dpc-1_ADL/ABL": 639,// alias for DPControl pseudo-bus
+
 "ADH/ABH": 821,      // load ABH latches from ADH bus
+"dpc-2_ADH/ABH": 821,// alias for DPControl pseudo-bus
 
 dpc0_YSB: 801,       // drive sb from y
 dpc1_SBY: 325,       // load y from sb
@@ -923,7 +926,7 @@ dpc31_PCHPCH: 741,   // load pch from pch incremented
 dpc32_PCHADH: 1235,  // drive adh from pch incremented
 dpc33_PCHDB: 247,    // drive idb from pch incremented
 dpc34_PCLC: 1704,    // pch carry in and pcl FF detect?
-dpc35_PCHC: 1334,    // pcl 0x?F detect - half-carry
+dpc35_PCHC: 1334,    // pch 0x?F detect - half-carry
 "dpc36_#IPC": 379,   // pcl carry in (inverted)
 "dpc36_~IPC": 379,    // automatic alias replacing hash with tilde
 dpc37_PCLDB: 283,    // drive idb from pcl incremented

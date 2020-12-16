@@ -11879,8 +11879,8 @@ p2: 1553,       // I bit of status register (storage node)
 p3: 348,        // D bit of status register (storage node)
 p4: 1119,       // there is no bit4 in the status register! (not a storage node)
 p5: -1,         // there is no bit5 in the status register! (not a storage node)
-p6: 77,         // V bit of status register (storage node)
-p7: 1370,       // N bit of status register (storage node)
+p6: 1625,       // V bit of status register (storage node)
+p7: 69,         // N bit of status register (storage node)
 
                 // internal bus: status register outputs for push P
 Pout0: 687,
@@ -12102,7 +12102,7 @@ notRnWprepad: 187, // internal signal: to pad, yet to be inverted and retimed
 RnWstretched: 353, // internal signal: control datapad output drivers, aka TRISTATE
 "#DBE": 1035,      // internal signal: formerly from DBE pad (6501)
 cp1: 710,       // internal signal: clock phase 1
-cclk: 943,      // unbonded pad: internal non-overlappying phi2
+cclk: 943,      // unbonded pad: internal non-overlapping phi2
 fetch: 879,     // internal signal
 clearIR: 1077,  // internal signal
 D1x1: 827,      // internal signal: interrupt handler related
@@ -12281,7 +12281,8 @@ INTG: 1350,     // internal signal: interrupt handler related
 
 // internal signals: control signals
 nnT2BR: 967,    // doubly inverted
-BRtaken: 1544,  // aka #TAKEN
+"#BRtaken": 1544,  // aka #TAKEN
+"~BRtaken": 1544,   // automatic alias replacing hash with tilde
 
 // interrupt and vector related
 NMIP: 1032,
@@ -12469,7 +12470,10 @@ AxB7: 1241,
 // internal signals: datapath control signals
 
 "ADL/ABL": 639,      // load ABL latches from ADL bus
+"dpc-1_ADL/ABL": 639,// alias for DPControl pseudo-bus
+
 "ADH/ABH": 821,      // load ABH latches from ADH bus
+"dpc-2_ADH/ABH": 821,// alias for DPControl pseudo-bus
 
 dpc0_YSB: 801,       // drive sb from y
 dpc1_SBY: 325,       // load y from sb
@@ -13569,7 +13573,15 @@ function saveString(name, str){
 
 function allNodes(){
 	var res = new Array();
-	for(var i in nodes) if((i!=npwr)&&(i!=ngnd)) res.push(i);
+	var ii = 0;
+	for(var i in nodes) {
+		// Don't feed numeric strings to recalcNodeList(). Numeric
+		// strings can cause a (data dependent) duplicate node number
+		// hiccup when accumulating a node group's list, ie:
+		// group => [ "49", 483, 49 ]
+		ii = Number( i );
+		if((ii!=npwr)&&(ii!=ngnd)) res.push(ii);
+	}
 	return res;
 }
 
@@ -14014,6 +14026,71 @@ function listActiveTCStates() {
 	return s.join("+");
 }
 
+    // Show all time code node states (active and inactive) in fixed format,
+    // with non-PLA-controlling internal state indication in square
+    // brackets, followed by RCL-resident timing state indication.
+    // ".." for a PLA-controlling node indicates inactive state, "T"* for a
+    // PLA-controlling node indicates active state.
+    // Bracketed codes are one of T1/V0/T6/..
+    // V0 indicates the VEC0 node, T6 is a synonym for the VEC1 node.
+    // The RCL codes are one of SD1/SD2/...
+    // For discussion of this reconstruction, see:
+    // http://visual6502.org/wiki/index.php?title=6502_Timing_States
+function allTCStates( useHTML )
+{
+    var s = "";
+    var _spc;
+    useHTML = (typeof useHTML === 'undefined') ? false : useHTML;
+        // Use Non-Breaking Space for presentation in an HTML (browser)
+        // context, else use ASCII space for logging context
+    _spc = useHTML ? '&nbsp;' : ' ';
+    if ( !isNodeHigh( nodenames[ 'clock1' ] ) ) s += "T0"; else s += "..";
+    s += _spc;
+        // T+ in visual6502 is called T1x in
+        // http://www.weihenstephan.org/~michaste/pagetable/6502/6502.jpg
+        // Notated as T+ for compatibility with PLA node names
+    if ( !isNodeHigh( nodenames[ 'clock2' ] ) ) s += "T+"; else s += "..";
+    s += _spc;
+    if ( !isNodeHigh( nodenames[ 't2' ] ) ) s += "T2"; else s += "..";
+    s += _spc;
+    if ( !isNodeHigh( nodenames[ 't3' ] ) ) s += "T3"; else s += "..";
+    s += _spc;
+    if ( !isNodeHigh( nodenames[ 't4' ] ) ) s += "T4"; else s += "..";
+    s += _spc;
+    if ( !isNodeHigh( nodenames[ 't5' ] ) ) s += "T5"; else s += "..";
+    s += _spc + "[";
+    // Check three confirmed exclusive states (three nodes)
+    if ( isNodeHigh( 862 ) ) {
+        s += "T1";
+        // ...else if VEC0 is on...
+    } else if ( isNodeHigh( nodenames[ 'VEC0' ] ) ) {
+        // ...then tell the outside world
+        s += "V0";
+        // ...else if VEC1 is on...
+    } else if ( isNodeHigh( nodenames[ 'VEC1' ] ) ) {
+        // ...then this is the canonical T6. It is a synonym for VEC1
+        s += "T6";
+    } else {
+        // ...else none of the "hidden" bits in the clock state is active
+        s += "..";
+    }
+    s += "]" + _spc;
+    // Check the RCL's two confirmed exclusive states (two nodes)
+        // If this node is grounding ~WR...
+    if ( isNodeHigh( 440 ) ) {
+        // ...then we can regard this state as Store Data 1
+        s += "SD1";
+        // ...else if this node is grounding ~WR...
+    } else if ( isNodeHigh( 1258 ) ) {
+        // ...then we can regard this state as Store Data 2
+        s += "SD2";
+    } else {
+        // ...else none of the RCL-resident timing bits is active
+        s += "...";
+    }
+    return s;
+}
+
 function readBit(name){
         return isNodeHigh(nodenames[name])?1:0;
 }
@@ -14040,6 +14117,13 @@ function busToString(busname){
 		return ['clock1','clock2','t2','t3','t4','t5'].map(busToHex).join("");
 	if(busname=='State')
 		return listActiveTCStates();
+	if(busname=='TState')
+		return allTCStates( true );
+	if(busname=='Phi')
+		// Pretty-printed phase indication based on the state of cp1,
+                // the internal Phase 1 node
+		return '&Phi;' +
+		       (isNodeHigh( nodenames[ 'cp1' ] ) ? '1' : '2');
 	if(busname=='Execute')
 		return dis6502toHTML(readBits('ir',8));
 	if(busname=='Fetch')
@@ -14049,7 +14133,7 @@ function busToString(busname){
 		//    - we'll allow the x and xx prefix but ignore the #
 		return listActiveSignals('^([x]?x-)?op-');
 	if(busname=='DPControl')
-		return listActiveSignals('^dpc[0-9]+_');
+		return listActiveSignals('^dpc[-]?[0-9]+_');
 	if(busname[0]=="-"){
 		// invert the value of the bus for display
 		var value=busToHex(busname.slice(1))
@@ -14407,7 +14491,7 @@ var dis6502={
 0x68:"PLA",
 0x69:"ADC #",
 0x6A:"ROR ",
-0x6C:"JMP zp",
+0x6C:"JMP (Abs)",
 0x6D:"ADC Abs",
 0x6E:"ROR Abs",
 0x70:"BVS ",

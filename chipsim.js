@@ -143,14 +143,22 @@ function saveString(name, str){
 
 function allNodes(){
 	var res = new Array();
-	for(var i in nodes) if((i!=npwr)&&(i!=ngnd)) res.push(i);
+	var ii = 0;
+	for(var i in nodes) {
+		// Don't feed numeric strings to recalcNodeList(). Numeric
+		// strings can cause a (data dependent) duplicate node number
+		// hiccup when accumulating a node group's list, ie:
+		// group => [ "49", 483, 49 ]
+		ii = Number( i );
+		if((ii!=npwr)&&(ii!=ngnd)) res.push(ii);
+	}
 	return res;
 }
 
 function stateString(){
 	var codes = ['l','h'];
 	var res = '';
-	for(var i=0;i<1725;i++){
+	for(var i=0;i<nodes.length;i++){
 		var n = nodes[i];
 		if(n==undefined) res+='x';
 		else if(i==ngnd) res+='g';
